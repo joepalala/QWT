@@ -40,6 +40,6 @@ function verifyQwt(qtoken) {
 	const [header, payload, signature] = parts;
 	const expectedSig = SHA1(signingSalt + sep + header + sep + payload);
 	
-	const isSigValid = (signature === expected) ?  true : false;
+	const isSigValid = (signature === expectedSig);
 	return isSigValid;
 }
