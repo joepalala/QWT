@@ -1,37 +1,21 @@
 /*
-  various functions to be used in generating QWTs
-	
-  TODO: 
-		- Test code if it works
-		- Create decode function for QWT
+	TODO: 
+		- Create example code
 */
-function UrlEncode(strbase64){
-    return strbase64.replace(/\+/g, '-').replace(/\//g, '_').replace(/\=+$/, '');
-}
+var SHA1 = require("crypto-js/sha1");
+var Base64 = require("crypto-js/enc-base64");
+var CryptoCore = require("crypto-js/core");
 
-function UrlDecode(base64url){
-    const base64url = (base64url + '===').slice(0, base64url.length + (base64url.length % 4));
-    return base64url.replace(/-/g, '+').replace(/_/g, '/');
-}
+// morse for 'Q', used as salt for creating signature
+const signingSalt = '1101';
+// separator used in creating signature
+const sep = ';'; 
 
-function encodeToURLData(data) {
-   return UrlEncode(btoa(data));
-}
+function encodeWithBase64(str) {
+  const encodedWord = CryptoCore.Utf8.parse(str); 
+  const encoded = Base64.stringify(encodedWord);
 
-/* 
-  function returns plaintext of the base64url encoded string
-  to be used for decoding
-*/
-function decodeFromURLData(baseUrlEncodedStr) {
-	// convert first to plain base64 string
-	const base64Str = UrlDecode(baseUrlEncodedStr);
-	return atob(base64Str);
-}
-
-/* function requires CryptoJS */
-function sign(header, payload) {
-	const signingSalt = '1101';
-	return CryptoJS.SHA1(signingSalt + ';' + encodeToURLData(header) + ';' + encodeToURLData(payload));
+  return encoded;
 }
 
 /*
@@ -42,8 +26,20 @@ function sign(header, payload) {
 		- <payload>: plainText payload data 
 */
 function generateQWT(header, payload) {
-   const encodedHeader = encodeToURLData(header);
-   const encodedPayload = encodeToURLData(payload);
-   const signature = sign(header, payload);
-   return encodedHeader + '.' + encodedPayload + '.' + signature;
+   const encodedHeader = encodeWithBase64(header);
+   const encodedPayload = encodeWithBase64(payload);
+   const signature = SHA1(signingSalt + sep + encodedHeader + sep + encodedPayload);
+   
+   const token = encodedHeader + "." + encodedPayload + "." + signature;
+   return token;
+}
+
+/* verify the token with the signature  */
+function verifyQwt(qtoken) {
+	const parts = qtoken.split("\\.");
+	const [header, payload, signature] = parts;
+	const expectedSig = SHA1(signingSalt + sep + header + sep + payload);
+	
+	const isSigValid = (signature === expectedSig);
+	return isSigValid;
 }
